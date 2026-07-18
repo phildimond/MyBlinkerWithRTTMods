@@ -25,7 +25,7 @@ int main()
         gpio_put(LED_PIN, 1); // Turn LED ON
         sleep_ms(1000);       // Wait 1 second
 
-        // Demonstrate on way to read from the rtt stream
+        // Demonstrate one way to read from the rtt stream
         int c = getchar_timeout_us(0); 
         int ci = 0;
         if (c != PICO_ERROR_TIMEOUT) {
