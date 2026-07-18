@@ -33,7 +33,7 @@
                 "address": "auto",
                 "decoders": [
                     {
-                        "label": "MyBlinker",
+                        "label": "MyBlinker RTT Feed",
                         "port": 0,
                         "type": "console"
                     }
