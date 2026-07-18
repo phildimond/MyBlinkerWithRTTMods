@@ -1,0 +1,72 @@
+Adding RTT debug output when using the Pico C SDK with Visual Studio
+====================================================================
+
+This is the usual debugger output when a session starts:
+
+
+    Cortex-Debug: VSCode debugger extension version 1.12.1 git(652d042). Usage info: https://github.com/Marus/cortex-debug#usage
+    Reading symbols from objdump-multiarch --syms -C -h -w /home/phillip/source/pico_c/MyBlinkerWithRTTMods/build/MyBlinkerWithRTTMods.elf
+    Reading symbols from nm-multiarch --defined-only -S -l -C -p /home/phillip/source/pico_c/MyBlinkerWithRTTMods/build/MyBlinkerWithRTTMods.elf
+    Launching GDB: gdb-multiarch -q --interpreter=mi2 -ex "set debug-file-directory /debug"
+        IMPORTANT: Set "showDevDebugOutput": "raw" in "launch.json" to see verbose GDB transactions here. Very helpful to debug issues or report problems
+    Error: nm-multiarch failed! statics/global/functions may not be properly classified: Error: spawn nm-multiarch ENOENT
+        Expecting `nm` next to `objdump`. If that is not the problem please report this.
+    Error: objdump failed! statics/globals/functions may not be properly classified: Error: spawn objdump-multiarch ENOENT
+        ENOENT means program not found. If that is not the issue, please report this problem.
+    Launching gdb-server: /home/phillip/.pico-sdk/openocd/0.12.0+dev/openocd.exe -c "gdb_port 50000" -c "tcl_port 50001" -c "telnet_port 50002" -s /home/phillip/.pico-sdk/openocd/0.12.0+dev/scripts -f /home/phillip/.vscode/extensions/marus25.cortex-debug-1.12.1/support/openocd-helpers.tcl -f interface/cmsis-dap.cfg -f target/rp2350.cfg -c "adapter speed 5000"
+        Please check TERMINAL tab (gdb-server) for output from /home/phillip/.pico-sdk/openocd/0.12.0+dev/openocd.exe
+    Finished reading symbols from objdump: Time: 16 ms
+    Finished reading symbols from nm: Time: 12 ms
+
+Adding the line (with the path set correctly if it's different):
+    objdumpPath": "${userHome}/.pico-sdk/toolchain/15_2_Rel1/bin/arm-none-eabi-objdump",
+just below the gdbpath changes the output to that below, getting rid of the errors :
+
+    Cortex-Debug: VSCode debugger extension version 1.12.1 git(652d042). Usage info: https://github.com/Marus/cortex-debug#usage
+    Reading symbols from /home/phillip/.pico-sdk/toolchain/15_2_Rel1/bin/arm-none-eabi-objdump --syms -C -h -w /home/phillip/source/pico_c/MyBlinkerWithRTTMods/build/MyBlinkerWithRTTMods.elf
+    Reading symbols from /home/phillip/.pico-sdk/toolchain/15_2_Rel1/bin/arm-none-eabi-nm --defined-only -S -l -C -p /home/phillip/source/pico_c/MyBlinkerWithRTTMods/build/MyBlinkerWithRTTMods.elf
+    Launching GDB: gdb-multiarch -q --interpreter=mi2 -ex "set debug-file-directory /debug"
+        IMPORTANT: Set "showDevDebugOutput": "raw" in "launch.json" to see verbose GDB transactions here. Very helpful to debug issues or report problems
+    Launching gdb-server: /home/phillip/.pico-sdk/openocd/0.12.0+dev/openocd.exe -c "gdb_port 50000" -c "tcl_port 50001" -c "telnet_port 50002" -s /home/phillip/.pico-sdk/openocd/0.12.0+dev/scripts -f /home/phillip/.vscode/extensions/marus25.cortex-debug-1.12.1/support/openocd-helpers.tcl -f interface/cmsis-dap.cfg -f target/rp2350.cfg -c "adapter speed 5000"
+        Please check TERMINAL tab (gdb-server) for output from /home/phillip/.pico-sdk/openocd/0.12.0+dev/openocd.exe
+    Finished reading symbols from objdump: Time: 27 ms
+    Finished reading symbols from nm: Time: 29 ms
+
+You have to do the above before trying to enable RTT.
+
+Now, Add the RTT stuff to launch.json, below the "openOCDLaunchCommands" section, as below. This tells OpenOCD to talk to the Pico CPU and open an RTT channel for a listener:
+            ],
+            "openOCDLaunchCommands": [
+                "adapter speed 5000"
+            ],
+            "rttConfig": {
+                "enabled": true,
+                "address": "auto",
+                "decoders": [
+                    {
+                        "label": "MyBlinker",
+                        "port": 0,
+                        "type": "console"
+                    }
+                ]
+            }
+        },
+
+Do the same to any other debug configurations you may use. The Pico SDK creates two configs in launch.json, one for the SDK's GDB and one for an external GDB implementation. 
+
+If you try to debug now, you'll see the following message in the GDB output:
+    Could not find symbol '_SEGGER_RTT' in executable. Make sure you compile/link with debug ON or you can specify your own RTT address
+
+We need to add code to the executable to tell the debugger where to find the RTT memory segment, and of course we need to redirect the console output to the RTT channel. Modify CMakeLists.txt to add the rtt library and direct stdio output to it. Your CMakeLists.txt should have these lines (with other libraries as needed, of course!) - I usually put them before the pico SDK generated "# Add the standard include files to the build" line, and change "<YOUR_PROJECT_NAME>" to the name of your project:
+
+    # Modify the below lines to enable/disable output over UART/USB/RTT
+    pico_enable_stdio_uart(<YOUR_PROJECT_NAME> 0)
+    pico_enable_stdio_usb(<YOUR_PROJECT_NAME> 0)
+    pico_enable_stdio_rtt(<YOUR_PROJECT_NAME> 1)
+
+    # Add the standard library to the build
+    target_link_libraries(<YOUR_PROJECT_NAME>
+            pico_stdlib
+            pico_stdio_rtt)
+
+And that should be it. Do a debug build and run it. If you click on the VS Code Terminal window, there should be two window options available. One will be the gdb-server window, the other will have the name of your project and it will have the RTT output. Now you can send debugging messages without using up UART pins (and interrupts or DMA) or occupying the USB port, and without using device pins other than the two SWO pins already dedicated to this task.
