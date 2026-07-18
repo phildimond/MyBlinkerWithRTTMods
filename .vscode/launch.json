@@ -41,6 +41,39 @@
             }
         },
         {
+            "name": "Pico Debug (Cortex-Debug with J-Link)",
+            "cwd": "${workspaceRoot}",
+            "executable": "${command:raspberry-pi-pico.launchTargetPath}",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "jlink",
+            "serverpath": "/usr/bin/JLinkGDBServer",
+            "device": "RP2350_M33_0",
+            "interface": "swd",
+            "gdbPath": "${command:raspberry-pi-pico.getGDBPath}",
+            "objdumpPath": "${userHome}/.pico-sdk/toolchain/15_2_Rel1/bin/arm-none-eabi-objdump",
+            "debuggerArgs": ["-ex", "set debug-file-directory /debug"],
+            "svdFile": "${userHome}/.pico-sdk/sdk/2.3.0/src/${command:raspberry-pi-pico.getChip}/hardware_regs/${command:raspberry-pi-pico.getChipUppercase}.svd",
+            "runToEntryPoint": "main",
+            // Fix for no_flash binaries, where monitor reset halt doesn't do what is expected
+            // Also works fine for flash binaries
+            "overrideLaunchCommands": [
+                "monitor reset init",
+                "load \"${command:raspberry-pi-pico.launchTargetPath}\""
+            ],
+            "rttConfig": {
+                "enabled": true,
+                "address": "auto",
+                "decoders": [
+                    {
+                        "label": "MyBlinker RTT Feed",
+                        "port": 0,
+                        "type": "console"
+                    }
+                ]
+            }
+        },
+        {
             "name": "Pico Debug (Cortex-Debug with external OpenOCD)",
             "cwd": "${workspaceRoot}",
             "executable": "${command:raspberry-pi-pico.launchTargetPath}",

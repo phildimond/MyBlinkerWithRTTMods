@@ -6,7 +6,7 @@
 
 int main()
 {
-    // stdio_init_all(); // will init rtt, plus uart anbd/or USB if you have enabled these
+    // stdio_init_all(); // will init rtt, plus uart and/or USB if you have enabled these
 
     stdio_rtt_init();   // all you need if using rtt only, must #include "pico/stdio_rtt.h"
 
